@@ -1,0 +1,19 @@
+/* Layout und Farben; keine Framework-Abhängigkeiten. */
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #101726; color: #edf4ff; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; }
+main { max-width: 760px; margin: auto; }
+h1 { margin-bottom: 4px; } h2 { font-size: 1.15rem; }
+p, small { line-height: 1.55; color: #becde0; }
+section { padding: 20px; margin: 18px 0; border: 1px solid #344963; border-radius: 16px; background: #1a2538; }
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+button, select { padding: 12px; border: 1px solid #58718d; border-radius: 9px; background: #263951; color: inherit; font: inherit; }
+button { cursor: pointer; } button:disabled { opacity: .45; cursor: default; }
+#start { background: #73e6bd; color: #102b22; }
+label { display: block; margin: 18px 0 8px; }
+select, input[type=range] { width: 100%; } input { accent-color: #73e6bd; }
+.warning { color: #ffd593; }
+.values { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.values div { text-align: center; background: #101726; padding: 12px 2px; border-radius: 8px; }
+.values output { display: block; margin-top: 8px; font-variant-numeric: tabular-nums; }
+canvas { width: 100%; height: 180px; display: block; } summary { cursor: pointer; }
