@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#101726">
+    <title>Motion → Sound</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: system-ui, sans-serif;
+            background: #101726;
+            color: #edf4ff
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            padding: 22px 16px 40px
+        }
+
+        main {
+            max-width: 700px;
+            margin: auto
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2rem
+        }
+
+        p {
+            line-height: 1.55;
+            color: #b7c6dc
+        }
+
+        .card {
+            background: #1a2538;
+            border: 1px solid #30415c;
+            border-radius: 18px;
+            padding: 18px;
+            margin-top: 16px
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center
+        }
+
+        button,
+        select {
+            font: inherit;
+            border: 1px solid #55708d;
+            border-radius: 10px;
+            padding: 12px;
+            background: #263951;
+            color: inherit
+        }
+
+        button {
+            cursor: pointer
+        }
+
+        button.primary {
+            background: #73e6bd;
+            color: #09281f;
+            font-weight: 700
+        }
+
+        button:disabled {
+            opacity: .45
+        }
+
+        label {
+            display: block;
+            margin: 15px 0 6px
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #73e6bd
+        }
+
+        select {
+            width: 100%
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px
+        }
+
+        .stat {
+            background: #101b2e;
+            padding: 12px 4px;
+            text-align: center;
+            border-radius: 10px
+        }
+
+        .stat span {
+            display: block;
+            font-size: 1.25rem;
+            font-variant-numeric: tabular-nums
+        }
+
+        .stat small {
+            color: #b7c6dc
+        }
+
+        canvas {
+            width: 100%;
+            height: 170px;
+            display: block;
+            margin-top: 12px
+        }
+
+        #status {
+            overflow-wrap: anywhere
+        }
+
+        summary {
+            cursor: pointer
+        }
+
+        small {
+            line-height: 1.5
+        }
+
+        #activity {
+            height: 7px;
+            background: #0c1728;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 12px
+        }
+
+        #activity div {
+            height: 100%;
+            width: 0;
+            background: #73e6bd
+        }
+
+        a {
+            color: #73e6bd
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Motion → Sound</h1>
+        <p>Lineare Beschleunigung hören · ohne Installation · ohne externe Bibliotheken</p>
+        <section class="card">
+            <div class="row"><button id="start" class="primary">Sensor starten</button><button
+                    id="demo">Simulation</button><button id="stop" disabled>Stopp</button></div>
+            <p id="status" role="status" aria-live="polite">Bereit. Lautstärke zunächst niedrig einstellen.</p><small
+                id="source">Noch keine Datenquelle.</small>
+            <div id="activity">
+                <div id="bar"></div>
+            </div>
+        </section>
+        <section class="card">
+            <div class="stats">
+                <div class="stat"><small>X</small><span id="x">0.00</span></div>
+                <div class="stat"><small>Y</small><span id="y">0.00</span></div>
+                <div class="stat"><small>Z</small><span id="z">0.00</span></div>
+                <div class="stat"><small>Betrag</small><span id="mag">0.00</span></div>
+            </div><small>Beschleunigung in m/s² · Gerätekoordinaten</small><canvas id="plot"
+                aria-label="Beschleunigungsverlauf: X rot, Y grün, Z blau"></canvas><small>X: rot · Y: grün · Z: blau ·
+                Verlauf relativ zum Messbereich</small>
+        </section>
+        <section class="card"><label for="mode">Sonifikation</label><select id="mode">
+                <option value="mag">Betrag → Tonhöhe + Lautstärke</option>
+                <option value="xyz">XYZ → drei getrennte Stimmen</option>
+                <option value="x">X → Tonhöhe (mit Vorzeichen)</option>
+                <option value="y">Y → Tonhöhe (mit Vorzeichen)</option>
+                <option value="z">Z → Tonhöhe (mit Vorzeichen)</option>
+            </select>
+            <label for="range">Messbereich / Empfindlichkeit: <output id="rangeVal">8</output> m/s²</label><input
+                id="range" type="range" min="1" max="30" step="0.5" value="8">
+            <label for="volume">Maximale Lautstärke: <output id="volumeVal">20</output> %</label><input id="volume"
+                type="range" min="0" max="60" value="20">
+            <label for="dead">Ruhezone: <output id="deadVal">0.15</output> m/s²</label><input id="dead" type="range"
+                min="0" max="1" step="0.01" value="0.15">
+            <label for="smooth">Glättungszeit: <output id="smoothVal">50</output> ms</label><input id="smooth"
+                type="range" min="0" max="300" step="10" value="50">
+        </section>
+        <section class="card">
+            <details>
+                <summary>Mapping, Voraussetzungen & Datenschutz</summary>
+                <p>Primär wird LinearAccelerationSensor mit angeforderten 60 Hz und referenceFrame „device“ verwendet.
+                    Der Fallback nutzt ausschließlich DeviceMotionEvent.acceleration, nicht
+                    accelerationIncludingGravity. Es wird keine eigene Schwerkraftschätzung vorgenommen.</p>
+                <p>Betrag: r = √(x²+y²+z²). Nach Abzug der Ruhezone wird r auf den Messbereich normiert und auf 110–1760
+                    Hz abgebildet (vier Oktaven). Die Lautstärke wächst mit derselben normierten Größe. Achsenmodus:
+                    −Messbereich bis +Messbereich entspricht 110–1760 Hz, Null liegt bei 440 Hz; in Ruhe bleibt der Ton
+                    stumm.</p>
+                <p>XYZ: X, Y und Z steuern je eine Sinusstimme mit Grundfrequenzen 220, 330 und 440 Hz. Das Vorzeichen
+                    steuert die Tonhöhe um bis zu ±1 Oktave; der Betrag steuert die jeweilige Lautstärke. Die drei
+                    Stimmen sind links, mittig und rechts positioniert, sofern StereoPanner unterstützt wird.</p>
+                <p>Kleinerer Messbereich bedeutet höhere Empfindlichkeit. Die Ruhezone unterdrückt kleine Bewegungen.
+                    Ein zeitbasierter Tiefpass glättet die Messwerte; zusätzliche Audio-Rampen vermeiden abrupte
+                    Pegelsprünge. Die angeforderte Abtastrate ist nicht garantiert.</p>
+                <p>Für echte Sensoren die Seite über HTTPS öffnen, direkt im Browser statt in einem eingebetteten
+                    Vorschaufenster. Sensorzugriff und gegebenenfalls Bewegungsfreigabe müssen erlaubt sein. Die
+                    Simulation ist synthetisch und immer deutlich gekennzeichnet. Kein automatischer Wechsel zur
+                    Simulation.</p>
+                <p>Keine Datenübertragung, kein Tracking, keine Aufzeichnung. Die App verarbeitet Werte nur im
+                    Arbeitsspeicher. Beim Verlassen des sichtbaren Tabs stoppt sie. Dies ist ein Demonstrator, kein
+                    validiertes Messinstrument.</p>
+                <p>Quellen: <a
+                        href="https://developer.mozilla.org/en-US/docs/Web/API/LinearAccelerationSensor">LinearAccelerationSensor</a>
+                    · <a href="https://developer.mozilla.org/en-US/docs/Web/API/DeviceMotionEvent">DeviceMotionEvent</a>
+                </p>
+            </details>
+        </section>
+    </main>
+    <script>
+        'use strict';
+        const $ = id => document.getElementById(id), clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        let ctx, master, voices = [], sensor = null, motion = null, timer = null, watchdog = null, running = false, session = 0, last = 0, lastReceived = 0, filtered = [0, 0, 0], values = [0, 0, 0], history = [], count = 0, rateStart = 0, source = '', usingFallback = false;
+        function audio() { if (!ctx) { ctx = new (window.AudioContext || window.webkitAudioContext)(); master = ctx.createGain(); master.gain.value = 0; const limiter = ctx.createDynamicsCompressor(); limiter.threshold.value = -12; limiter.ratio.value = 12; master.connect(limiter); limiter.connect(ctx.destination); for (let i = 0; i < 3; i++) { const osc = ctx.createOscillator(), gain = ctx.createGain(); osc.type = 'sine'; gain.gain.value = 0; osc.connect(gain); if (ctx.createStereoPanner) { const pan = ctx.createStereoPanner(); pan.pan.value = [-.8, 0, .8][i]; gain.connect(pan); pan.connect(master) } else gain.connect(master); osc.start(); voices.push({ osc, gain }) } } return ctx.resume() }
+        function mute() { if (ctx) { master.gain.setTargetAtTime(0, ctx.currentTime, .025); voices.forEach(v => v.gain.gain.setTargetAtTime(0, ctx.currentTime, .025)) } }
+        function stop(message = 'Gestoppt.') { session++; running = false; if (sensor) { try { sensor.stop() } catch (e) { } sensor = null } if (motion) { window.removeEventListener('devicemotion', motion); motion = null } clearInterval(timer); clearInterval(watchdog); timer = watchdog = null; mute(); $('start').disabled = $('demo').disabled = false; $('stop').disabled = true; $('status').textContent = message; $('bar').style.width = '0%' }
+        function begin() { running = true; filtered = [0, 0, 0]; values = [0, 0, 0]; history = []; last = 0; lastReceived = 0; count = 0; rateStart = performance.now(); usingFallback = false; $('start').disabled = $('demo').disabled = true; $('stop').disabled = false; watchdog = setInterval(() => { if (!running) return; if (!lastReceived || performance.now() - lastReceived > 1800) { mute(); $('status').textContent = 'Warte auf gültige Beschleunigungsdaten. Sensorfreigabe / Browser prüfen.' } }, 900) }
+        function sound() { if (!ctx || !running) return; const now = ctx.currentTime, range = +$('range').value, dead = +$('dead').value, mode = $('mode').value; master.gain.setTargetAtTime(+$('volume').value / 100, now, .025); const norm = v => clamp((Math.abs(v) - dead) / range, 0, 1), mag = Math.hypot(...filtered); for (let i = 0; i < 3; i++) { let f = 440, g = 0; if (mode === 'xyz') { const n = norm(filtered[i]); f = [220, 330, 440][i] * 2 ** (Math.sign(filtered[i]) * n); g = n * .25 } else if (i === 0) { if (mode === 'mag') { const n = norm(mag); f = 110 * 2 ** (4 * n); g = n * .65 } else { const val = filtered[{ x: 0, y: 1, z: 2 }[mode]], n = norm(val); f = 440 * 2 ** (2 * Math.sign(val) * n); g = n * .65 } } voices[i].osc.frequency.setTargetAtTime(f, now, .025); voices[i].gain.gain.setTargetAtTime(g, now, .025) } $('bar').style.width = (norm(mag) * 100) + '%' }
+        function reading(x, y, z) { if (!running || ![x, y, z].every(v => typeof v === 'number' && Number.isFinite(v))) return; const now = performance.now(), dt = last ? Math.max(0, (now - last) / 1000) : 1, tau = +$('smooth').value / 1000, alpha = tau ? 1 - Math.exp(-dt / tau) : 1; values = [x, y, z]; filtered = values.map((v, i) => filtered[i] + alpha * (v - filtered[i])); last = lastReceived = now; history.push({ t: now, v: [...filtered] }); while (history.length && history[0].t < now - 6000) history.shift(); sound(); count++; if (now - rateStart > 1000) { $('source').textContent = source + ' · ca. ' + Math.round(count * 1000 / (now - rateStart)) + ' Hz'; count = 0; rateStart = now } $('status').textContent = source.startsWith('Simulation') ? 'Simulation läuft — synthetische Daten.' : 'Live-Sensor aktiv.' }
+        function fallback(token, permission) { if (token !== session || !running) return; if (usingFallback) { stop('Keine nutzbaren linearen Sensordaten.'); return } usingFallback = true; if (sensor) { try { sensor.stop() } catch (e) { } sensor = null } if (!('DeviceMotionEvent' in window)) { stop('Keine passende Sensor-API verfügbar. Simulation ist separat nutzbar.'); return } Promise.resolve(permission).then(p => { if (token !== session || !running) return; if (p === 'denied') { stop('Bewegungszugriff abgelehnt. Browserfreigaben prüfen.'); return } source = 'DeviceMotionEvent.acceleration (Fallback)'; $('source').textContent = source; motion = e => { const a = e.acceleration; if (a) reading(a.x, a.y, a.z) }; window.addEventListener('devicemotion', motion) }).catch(e => { if (token === session) stop('Bewegungsfreigabe fehlgeschlagen: ' + e.message) }) }
+        $('start').onclick = async () => { stop(); const token = session; if (!window.isSecureContext) { $('status').textContent = 'Sensorzugriff benötigt HTTPS. Bitte die App auf einem HTTPS-Webserver öffnen.'; return } let permission; try { if (typeof window.DeviceMotionEvent?.requestPermission === 'function') permission = window.DeviceMotionEvent.requestPermission(); const resume = audio(); begin(); await resume; if (token !== session || !running) return; if ('LinearAccelerationSensor' in window) { try { sensor = new LinearAccelerationSensor({ frequency: 60, referenceFrame: 'device' }); source = 'LinearAccelerationSensor'; $('source').textContent = source; sensor.addEventListener('reading', () => { if (token === session && sensor) reading(sensor.x, sensor.y, sensor.z) }); sensor.addEventListener('error', () => fallback(token, permission)); sensor.start() } catch (e) { fallback(token, permission) } } else fallback(token, permission) } catch (e) { if (token === session) stop('Start fehlgeschlagen: ' + e.message) } };
+        $('demo').onclick = async () => { stop(); const token = session; try { const resume = audio(); begin(); await resume; if (token !== session || !running) return; source = 'Simulation'; $('source').textContent = 'Simulation · keine Messdaten'; const t0 = performance.now(); timer = setInterval(() => { const t = (performance.now() - t0) / 1000, env = .5 + .5 * Math.sin(t * .7); reading(4 * env * Math.sin(2 * Math.PI * .8 * t), 2.5 * env * Math.sin(2 * Math.PI * 1.1 * t + .7), 1.8 * env * Math.sin(2 * Math.PI * .5 * t + 1.4)) }, 1000 / 60) } catch (e) { if (token === session) stop('Audio nicht verfügbar: ' + e.message) } };
+        $('stop').onclick = () => stop(); document.addEventListener('visibilitychange', () => { if (document.hidden && running) stop('Pausiert, weil die Seite nicht sichtbar ist. Zum Fortsetzen neu starten.') }); window.addEventListener('pagehide', () => stop());
+        for (const id of ['range', 'volume', 'dead', 'smooth']) $(id).oninput = () => { $(id + 'Val').textContent = $(id).value; if (lastReceived && performance.now() - lastReceived < 1800) sound() }; $('mode').onchange = () => { if (lastReceived && performance.now() - lastReceived < 1800) sound() };
+        function draw() { const c = $('plot'), dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight; if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr) } const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h); g.strokeStyle = '#3a4b63'; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke(); const now = performance.now(), range = +$('range').value;['#ff8d96', '#73e6bd', '#84baff'].forEach((color, i) => { g.strokeStyle = color; g.lineWidth = 2; g.beginPath(); let first = true; for (const p of history) { const px = w * (1 - (now - p.t) / 6000), py = h / 2 - clamp(p.v[i] / range, -1, 1) * (h / 2 - 8); if (px < 0) continue; if (first) { g.moveTo(px, py); first = false } else g.lineTo(px, py) } g.stroke() });['x', 'y', 'z'].forEach((id, i) => $(id).textContent = filtered[i].toFixed(2)); $('mag').textContent = Math.hypot(...filtered).toFixed(2); requestAnimationFrame(draw) } draw();
+    </script>
+</body>
+
+</html>
